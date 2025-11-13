@@ -477,3 +477,308 @@ emmeans(vegetation_rt, pairwise~Vegetation, type="response")
 # HOWEVER we know from nmds that COMPOSITION differs
 
 
+### Benthic Analysis
+benthicrichness <- read.csv ("BenthicBiomassTotaled.csv")
+
+across <- benthicrichness %>%
+  group_by(Wetland, Date_collected, Sample, HLength, Type, CoV) %>%
+  summarise(Richness = n_distinct(Taxa)) %>%
+  ungroup()
+
+across <- across %>%
+  rename(Hydrology= HLength)%>%
+  rename(Vegetation= Type)%>%
+  rename(DateCollected = Date_collected)
+
+# testing for normality 
+qqnorm(across$Richness)
+qqline(across$Richness)
+
+shapiro.test(across$Richness)
+
+# looking at dispersion in the data
+dispmodel <- glm(Richness~Hydrology, data = across, family = poisson)
+dispersiontest(dispmodel)
+
+dispmodel <- glm(Richness~Vegetation, data = across, family = poisson)
+dispersiontest(dispmodel)
+
+
+## analysis of replicates (replicates averaged for each sampling date)
+replicates<- across %>%
+  group_by(Wetland, DateCollected, Vegetation, Hydrology, CoV) %>% 
+  summarize(Richness = mean(Richness, na.rm = TRUE),
+            .groups = "drop") %>%
+  rename(Hydroperiod= Hydrology)
+
+## anova of raw data, replicates/across time
+richnessveg<- aov(Richness ~ Vegetation, data = replicates)
+summary(richnessveg)
+# p = 0.00101
+emmeans(richnessveg, pairwise~Vegetation, type="response")
+# Vegetation emmean   SE df lower.CL upper.CL
+# Marsh        9.75 0.757 44     8.22    11.27
+# Swamp        6.05 0.725 44     4.59     7.52
+# p = 0.0010
+
+
+richnesshydro<- aov(Richness ~ Hydroperiod, data = replicates)
+summary(richnesshydro)
+# p = 0.484
+emmeans(richnesshydro, pairwise~Hydroperiod, type="response")
+# Hydroperiod  emmean   SE df lower.CL upper.CL
+# Intermediate   7.33 0.970 43     5.37     9.28
+# Long           8.62 0.894 43     6.82    10.43
+# Short          6.96 1.333 43     4.27     9.65
+# intermediate/long: p = 0.5925
+# intermediate/short: p = 0.9733
+# long/short: p = 0.5597
+
+
+richnessdate<- aov(Richness ~ DateCollected, data = replicates)
+summary(richnessdate)
+# p = 0.902
+emmeans(richnessdate, pairwise~DateCollected, type="response")
+# DateCollected emmean   SE df lower.CL upper.CL
+# 2/9/2023        7.76 1.24 41     5.25    10.26
+# 3/7/2023        6.83 1.30 41     4.21     9.46
+# 4/12/2023       8.68 1.37 41     5.91    11.45
+# 5/12/2023       8.23 1.56 41     5.09    11.37
+# 6/22/2023       7.81 1.37 41     5.05    10.58
+# no significance between dates 
+
+
+
+# creating a null model for comparison of other models
+null_model_rr <- glm.nb(Richness ~ 1, data = replicates, link = log)
+summary (null_model_rr)
+
+## HYDROLOGY
+
+# RICHNESS: sampling date data, avg values from replicates so one value per
+# sampling date per wetland
+
+# looking at the relationship between hydroperiod length and richness
+hydrology_rr <- glm.nb(Richness ~ Hydroperiod, data = replicates, link = log)
+summary (hydrology_rr)
+
+# anova
+anova(null_model_rr, hydrology_rr, test = "Chisq")
+# The insignificant p-value (0.4374649) indicates that including hydroperiod significantly improves model fit.
+emmeans(hydrology_rr, pairwise~Hydroperiod, type="response")
+# Predicted richness for each hydroperiod category:
+# Intermediate     7.33 0.866 Inf      5.81      9.24
+# Long             8.62 0.898 Inf      7.03     10.58
+# Short            6.96 1.147 Inf      5.04      9.62
+# Intermediate vs Long: no Significant difference (p = 0.5557); richness is lower for intermediate hydroperiods than for long ones.
+# Intermediate vs Short: No significant difference (p = 0.9655).
+# Long vs Short: no Significant difference (p = 0.5157); richness is higher for long hydroperiods than for short ones.
+
+
+## analysis of totals
+totals<- benthicrichness %>%
+  group_by(Wetland) %>%
+  summarise(Richness = n_distinct(Taxa)) %>%
+  ungroup()
+
+# adding in metadata
+totals <- totals %>%
+  mutate(Type = case_when(
+    Wetland == "W15" ~ "Marsh",
+    Wetland == "W21" ~ "Marsh",
+    Wetland == "W53" ~ "Marsh",
+    Wetland == "W46" ~ "Marsh",
+    Wetland == "W37" ~ "Marsh",
+    Wetland == "W42" ~ "Marsh",
+    Wetland == "W11" ~ "Swamp",
+    Wetland == "W68" ~ "Swamp",
+    Wetland == "W58" ~ "Swamp",
+    Wetland == "W32" ~ "Swamp",
+    Wetland == "W52" ~ "Swamp",
+  )) %>%
+  relocate(Type, .before = 1) %>%
+  mutate(HLength = case_when(
+    Wetland == "W15" ~ "Short",
+    Wetland == "W21" ~ "Intermediate",
+    Wetland == "W53" ~ "Intermediate",
+    Wetland == "W46" ~ "Long",
+    Wetland == "W37" ~ "Short",
+    Wetland == "W42" ~ "Long",
+    Wetland == "W11" ~ "Long",
+    Wetland == "W68" ~ "Intermediate",
+    Wetland == "W58" ~ "Long",
+    Wetland == "W32" ~ "Short",
+    Wetland == "W52" ~ "Intermediate",
+  )) %>%
+  relocate(Type, .before = 1) %>%
+  mutate(DaysInund = case_when(
+    Wetland == "W15" ~ "113",
+    Wetland == "W21" ~ "165",
+    Wetland == "W53" ~ "189",
+    Wetland == "W46" ~ "229",
+    Wetland == "W37" ~ "142",
+    Wetland == "W42" ~ "327",
+    Wetland == "W11" ~ "345",
+    Wetland == "W68" ~ "199",
+    Wetland == "W58" ~ "314",
+    Wetland == "W32" ~ "139",
+    Wetland == "W52" ~ "286",
+  )) %>%
+  relocate(HLength, .before = 1)%>%
+  mutate(CoV = case_when(
+    Wetland == "W15" ~ "0.5944965",
+    Wetland == "W21" ~ "0.3968312",
+    Wetland == "W53" ~ "0.3195769",
+    Wetland == "W46" ~ "0.3835618",
+    Wetland == "W37" ~ "0.5491605",
+    Wetland == "W42" ~ "0.2360643",
+    Wetland == "W11" ~ "0.3916141",
+    Wetland == "W68" ~ "0.3681222",
+    Wetland == "W58" ~ "0.3163063",
+    Wetland == "W32" ~ "0.4723248",
+    Wetland == "W52" ~ "0.4596531",
+  )) %>%
+  relocate(CoV, .before = 1)
+
+totals <- totals %>%
+  rename(Hydroperiod= HLength)%>%
+  rename(Vegetation= Type)
+
+## anova of raw data, totals
+richnessveg<- aov(Richness ~ Vegetation, data = totals)
+summary(richnessveg)
+# p =  0.615
+emmeans(richnessveg, pairwise~Vegetation, type="response")
+# Vegetation emmean   SE df lower.CL upper.CL
+# Marsh        40.8 6.51  9     26.1     55.6
+# Swamp        35.8 7.14  9     19.7     51.9
+# p = 0.6150
+
+richnesshydro<- aov(Richness ~ Hydroperiod, data = totals)
+summary(richnesshydro)
+# p = 0.234
+emmeans(richnesshydro, pairwise~Hydroperiod, type="response")
+# Hydroperiod  emmean   SE df lower.CL upper.CL
+# Intermediate   37.8 7.16  8    21.23     54.3
+# Long           47.8 7.16  8    31.23     64.3
+# Short          27.3 8.27  8     8.26     46.4
+# intermediate/long: p = 0.6047
+# intermediate/short: p = 0.6251
+# long/short: p = 0.2101
+
+
+# creating a null model for comparison of other models
+null_model_rt <- glm.nb(Richness ~ 1, data = totals, link = log)
+summary (null_model_rt)
+
+# Hydrology and total richness per site
+# looking at the relationship between hydroperiod length and richness
+hydrology_rt <- glm.nb(Richness ~ Hydroperiod, data = totals, link = log)
+summary (hydrology_rt)
+
+# anova
+anova(null_model_rt, hydrology_rt, test = "Chisq")
+# The insignificant p-value (0.1428474) indicates that including hydroperiod does not significantly improve model fit.
+emmeans(hydrology_rt, pairwise~Hydroperiod, type="response")
+# Predicted richness for each hydroperiod category:
+# Intermediate: 37.8 (95% CI: 27.3 to 52.2)
+# Long: 47.8 (95% CI: 34.8 to 65.5)
+# Short: 27.3 (95% CI: 18.5 to 40.4)
+# Intermediate vs Long: insignificant difference (p = 0.5656)
+# Intermediate vs Short: No significant difference (p = 0.4262).
+# Long vs Short: Significant difference (p = 0.0755)
+
+
+## VEGETATION
+
+# vegetation and average richness per sampling date
+# looking at the relationship between vegetation and richness
+vegetation_rr <- glm.nb(Richness ~ Vegetation, data = replicates, link = log)
+summary (vegetation_rr)
+
+# anova
+anova(null_model_rr, vegetation_rr, test = "Chisq")
+# The significant p-value (0.0004540495) indicates that including vegetation does improve model fit.
+emmeans(vegetation_rr, pairwise~Vegetation, type="response")
+# Predicted richness for each vegetation category:
+# Marsh: 9.75 (95% CI: 8.25 to 11.51)
+# Swamp: 6.05 (95% CI: 5.02 to 7.31)
+# Marsh vs swamp: significant difference (p = 0.0002)
+
+## analysis of totals
+
+# vegetation and average richness per sampling date
+# looking at the relationship between vegetation and richness
+vegetation_rt <- glm.nb(Richness ~ Vegetation, data = totals, link = log)
+summary (vegetation_rt)
+
+# anova
+anova(null_model_rt, vegetation_rt, test = "Chisq")
+# insignificant p-value (0.5809764) indicates that including hydroperiod insignificantly improves model fit.
+emmeans(vegetation_rt, pairwise~Vegetation, type="response")
+# Predicted richness for each vegetation category:
+# Marsh: 40.8 (95% CI: 29.9 to 55.7)
+# Swamp: 35.8 (95% CI: 25.4 to 50.5)
+# Marsh vs swamp: insignificant difference (p = 0.5778)
+
+
+## testing additive and interactive effects to determine whether veg and hydrology are related
+# Additive model
+additiveR <- glm.nb(Richness ~ Vegetation + Hydroperiod, data = replicates, link = "log")
+additiveR
+library(car)
+vif(additiveR)
+
+# Interactive model
+interactiveR <- glm.nb(Richness ~ Vegetation * Hydroperiod, data = replicates, link = "log")
+interactiveR
+
+emmeans(interactiveR, pairwise~Vegetation * Hydroperiod, type="response")
+
+# Compare models
+anova(additiveR, interactiveR, test = "Chisq")
+
+# there is no significant interaction between vegetation and hydrology, (0.1770409),
+# they both influence richness independently
+
+## collection date
+# looking at the relationship between collection date and density
+date_rr <- glm.nb(Richness ~ DateCollected, data = replicates, link = log)
+summary (date_rr)
+# (Intercept)             2.048670   0.145118  14.117   <2e-16 ***
+# DateCollected3/7/2023  -0.126857   0.214401  -0.592    0.554    
+# DateCollected4/12/2023  0.111882   0.212796   0.526    0.599    
+# DateCollected5/12/2023  0.059521   0.230408   0.258    0.796    
+# DateCollected6/22/2023  0.007351   0.216086   0.034    0.973 
+
+# anova
+anova(null_model_rr, date_rr, test = "Chisq")
+# p-value (0.8699036) 
+emmeans(date_rr, pairwise~DateCollected, type="response")
+# no significant differences
+
+replicatesM <- replicates %>%
+  filter(Vegetation == "Marsh")
+replicatesS <- replicates %>%
+  filter(Vegetation == "Swamp")
+null_model_rrm <- glm.nb (Richness ~ 1, link = "log", data = replicatesM)
+null_model_rrs <- glm.nb (Richness ~ 1, link = "log", data = replicatesS)
+
+
+date_rrm <- glm.nb (Richness ~ DateCollected, link = "log", data = replicatesM)
+summary (date_rrm)
+
+# anova
+anova(null_model_rrm, date_rrm, test = "Chisq")
+# The significant p-value (0.01219) indicates that including hydroperiod does not significantly improves model fit.
+emmeans(date_rrm, pairwise~DateCollected, type="response")
+
+
+date_rrs <- glm.nb (Richness ~ DateCollected, link = "log", data = replicatesM)
+summary (date_rrs)
+
+# anova
+anova(null_model_rrs, date_rrs, test = "Chisq")
+# The significant p-value (0.01219) indicates that including hydroperiod does not significantly improves model fit.
+emmeans(date_rrs, pairwise~DateCollected, type="response")
+
