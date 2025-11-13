@@ -782,3 +782,240 @@ anova(null_model_rrs, date_rrs, test = "Chisq")
 # The significant p-value (0.01219) indicates that including hydroperiod does not significantly improves model fit.
 emmeans(date_rrs, pairwise~DateCollected, type="response")
 
+
+### Benthic biomass analysis
+# importing the data and totaling biomass per sample
+across<- read.csv ("BenthicBiomassTotaled.csv")
+across <- across %>%
+  group_by(Wetland, Date_collected, Type, HLength, CoV, Sample) %>% 
+  summarize(Biomass = sum (tot_biomass, na.rm = TRUE), 
+            Density = sum(Count, na.rm = TRUE),
+            .groups = "drop") 
+
+# renaming some things for ease
+across <- across %>%
+  mutate(Density = round(Density))%>%
+  rename(DateCollected= Date_collected)%>%
+  rename(Hydrology= HLength)%>%
+  rename(Vegetation= Type)
+
+# testing for normality 
+qqnorm(across$Biomass)
+qqline(across$Biomass)
+
+shapiro.test(across$Biomass)
+
+# checking for overdispersion in the data
+dispmodel <- glm(Biomass~Hydrology, data = across, family = poisson)
+dispersiontest(dispmodel)
+
+dispmodel <- glm(Biomass~Vegetation, data = across, family = poisson)
+dispersiontest(dispmodel)
+
+## analysis of replicates (averaging biomass per collection date)
+replicates<- across %>%
+  group_by(Wetland, DateCollected, Vegetation, Hydrology, CoV) %>% 
+  summarize(Biomass = mean(Biomass, na.rm = TRUE), 
+            Density = mean(Density, na.rm = TRUE),
+            .groups = "drop") %>%
+  rename(Hydroperiod= Hydrology)
+
+## anova of raw data, replicates/across time
+biomassveg<- aov(Biomass ~ Vegetation, data = replicates)
+summary(biomassveg)
+# p = 0.0022
+emmeans(biomassveg, pairwise~Vegetation, type="response")
+# Vegetation emmean   SE df lower.CL upper.CL
+# Marsh        99.1 14.5 44    69.99    128.3
+# Swamp        34.0 13.8 44     6.12     61.9
+# p = 0.0022
+
+biomasshydro<- aov(Biomass ~ Hydroperiod, data = replicates)
+summary(biomasshydro)
+# p = 0.00409
+emmeans(biomasshydro, pairwise~Hydroperiod, type="response")
+# Hydroperiod  emmean   SE df lower.CL upper.CL
+#  Intermediate   38.2 16.3 43     5.31     71.1
+#  Long          105.0 15.0 43    74.63    135.3
+#  Short          27.7 22.4 43   -17.53     72.9
+# intermediate/long: p = 0.0119
+# intermediate/short: p = 0.9237
+# long/short: p = 0.0174
+
+biomassdate<- aov(Biomass ~ DateCollected, data = replicates)
+summary(biomassdate)
+# p = 0.0415
+emmeans(biomassdate, pairwise~DateCollected, type="response")
+# DateCollected emmean   SE df lower.CL upper.CL
+# 2/9/2023        54.1 21.0 41    11.77     96.4
+# 3/7/2023        77.5 22.0 41    33.06    121.9
+# 4/12/2023       47.7 23.2 41     0.92     94.5
+# 5/12/2023      135.6 26.3 41    82.52    188.7
+# 6/22/2023       27.7 23.2 41   -19.10     74.5
+
+# no significance between dates besides may and june, 
+# biomass highest in may and lowest in june
+#  (5/12/2023) - (6/22/2023), p = 0.0287
+
+
+
+## creating models and model analysis
+# creating a null model for comparison of other models
+null_model_br <- glm(Biomass ~ 1, family = Gamma (link = "log"), data = replicates)
+summary (null_model_br)
+
+## HYDROLOGY
+
+# replicates: sampling date data, avg values from replicates so one value per
+# sampling date per wetland
+
+# looking at the relationship between hydroperiod length and biomass in per collection per site
+hydrology_br <- glm (Biomass ~ Hydroperiod, family = Gamma (link = "log"), data = replicates)
+summary (hydrology_br)
+
+# anova
+anova(null_model_br, hydrology_br, test = "Chisq")
+# The significant p-value (0.0002171) indicates that including hydroperiod does significantly improve model fit.
+emmeans(hydrology_br, pairwise~Hydroperiod, type="response")
+# Predicted biomass for each hydroperiod category:
+# Intermediate: 38.2 (95% CI: 24.3     60.1)
+# Long: 105.0 (95% CI: 69.1    159.4)
+# Short: 27.7 (95% CI: 14.8     51.6)
+# Intermediate vs Long: Insignificant difference (p =  0.0054); biomass is lower for intermediate hydroperiods than for long ones.
+# Intermediate vs Short: Significant difference (p = 0.6783).
+# Long vs Short: Insignificant difference (p = 0.0024); biomass is higher for long hydroperiods than for short ones.
+
+
+## analysis of averages
+across <- across %>%
+  rename(Hydroperiod= Hydrology)
+totals<- across %>%
+  group_by(Wetland, Vegetation, Hydroperiod, CoV) %>% 
+  summarize(Biomass = mean(Biomass, na.rm = TRUE), 
+            Density = mean(Density, na.rm = TRUE),
+            .groups = "drop") 
+
+## anova of raw data
+biomassveg<- aov(Biomass ~ Vegetation, data = totals)
+summary(biomassveg)
+# p =  0.0812
+emmeans(biomassveg, pairwise~Vegetation, type="response")
+
+
+biomasshydro<- aov(Biomass ~ Hydroperiod, data = totals)
+summary(biomasshydro)
+# p = 0.153
+emmeans(biomasshydro, pairwise~Hydroperiod, type="response")
+# Hydroperiod  emmean   SE df lower.CL upper.CL
+#  Intermediate   38.2 16.3 43     5.31     71.1
+#  Long          105.0 15.0 43    74.63    135.3
+#  Short          27.7 22.4 43   -17.53     72.9
+# intermediate/long: p = 0.0119
+# intermediate/short: p = 0.9237
+# long/short: p = 0.0174
+
+
+
+# creating a null model for comparison of other models
+null_model_bt <- glm(Biomass ~ 1, family = Gamma (link = "log"), data = totals)
+summary (null_model_bt)
+
+# Hydrology and total richness per site
+# looking at the relationship between hydroperiod length and richness
+hydrology_bt <- glm (Biomass ~ Hydroperiod, family = Gamma (link = "log"), data = totals)
+summary (hydrology_bt)
+
+# anova
+anova(null_model_bt, hydrology_bt, test = "Chisq")
+# The significant p-value (0.06132) indicates that including hydroperiod significantly model fit.
+emmeans(hydrology_bt, pairwise~Hydroperiod, type="response")
+# Hydroperiod  response    SE df lower.CL upper.CL
+# Intermediate      162  44.5  8     86.3      305
+# Long              525 143.7  8    279.0      987
+# Short              83  26.3  8     40.0      172
+
+#contrast             ratio    SE df null t.ratio p.value
+# Intermediate / Long  0.309 0.120  8    1  -3.028  0.0389
+# Intermediate / Short 1.956 0.818  8    1   1.603  0.2989
+# Long / Short         6.321 2.645  8    1   4.407  0.0057
+
+## VEGETATION
+
+# vegetation and average biomass per sampling date
+# looking at the relationship between vegetation and biomass
+vegetation_br <- glm (Biomass ~ Vegetation, family = Gamma (link = "log"), data = replicates)
+summary (vegetation_br)
+
+# anova
+anova(null_model_br, vegetation_br, test = "Chisq")
+# The significant p-value (0.0002533) indicates that including vegetation improves model fit.
+emmeans(vegetation_br, pairwise~Vegetation, type="response")
+# Predicted biomass for each vegetation category:
+# Marsh: 99.1 (95% CI: 65.2 to 150.7)
+# Swamp: 34.0 (95% CI: 22.8 to 50.8)
+# Marsh vs swamp: significant difference (p = 0.0006)
+
+## analysis of totals
+
+# vegetation and average biomass per sampling date
+# looking at the relationship between vegetation and biomass
+vegetation_bt <- glm (Biomass ~ Vegetation, family = Gamma (link = "log"), data = totals)
+summary (vegetation_bt)
+
+# Perform the likelihood ratio test
+anova(null_model_bt, vegetation_bt, test = "Chisq")
+# Compares the null model (without hydroperiod as a predictor) to the model with hydroperiod as a predictor.
+# insignificant p-value (0.1231) indicates that including vegetation does not improve model fit.
+emmeans(vegetation_bt, pairwise~Vegetation, type="response")
+# Predicted biomass for each vegetation category:
+# Marsh: 364 (95% CI: 167.9 to 787)
+# Swamp: 163 (95% CI: 70.1 to 381)
+# Marsh vs swamp: insignificant difference (p =  0.1486)
+
+## testing additive and interactive effects to determine whether veg and hydrology are related
+# Additive model
+additiveB <- glm.nb(Biomass ~ Vegetation + Hydroperiod, data = replicates, link = "log")
+additiveB
+library(car)
+vif(additiveB)
+
+# Interactive model
+interactiveB <- glm.nb(Biomass ~ Vegetation * Hydroperiod, data = replicates, link = "log")
+interactiveB
+
+emmeans(interactiveB, pairwise~Vegetation * Hydroperiod, type="response")
+
+# Compare models
+anova(additiveB, interactiveB, test = "Chisq")
+
+## collection date
+# looking at the relationship between collection date and biomass
+replicatesM <- replicates %>%
+  filter(Vegetation == "Marsh")
+replicatesS <- replicates %>%
+  filter(Vegetation == "Swamp")
+null_model_brm <- glm(Biomass ~ 1, family = Gamma (link = "log"), data = replicatesM)
+null_model_brs <- glm(Biomass ~ 1, family = Gamma (link = "log"), data = replicatesS)
+
+date_br <- glm (Biomass ~ DateCollected, family = Gamma (link = "log"), data = replicates)
+summary (date_br)
+
+# anova
+anova(null_model_br, date_br, test = "Chisq")
+
+date_brm <- glm (Biomass ~ DateCollected, family = Gamma (link = "log"), data = replicatesM)
+summary (date_brm)
+
+# anova
+anova(null_model_brm, date_brm, test = "Chisq")
+# The significant p-value (0.01219) indicates that including hydroperiod does not significantly improves model fit.
+emmeans(date_brm, pairwise~DateCollected, type="response")
+
+
+date_brs <- glm (Biomass ~ DateCollected, family = Gamma (link = "log"), data = replicatesS)
+summary (date_brs)
+
+# anova
+anova(null_model_brs, date_brs, test = "Chisq")
+# The significant p-value (0.01219) indicates that including hydroperiod does not significantly improves model fit.
+emmeans(date_brs, pairwise~DateCollected, type="response")
