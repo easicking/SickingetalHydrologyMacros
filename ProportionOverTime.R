@@ -1,4 +1,4 @@
-### Proportion of insects to non-insects across time, Figure 6
+### Ratio of insects to non-insects across time, Figure 6
 
 # loading in packages
 library(tidyr)
@@ -44,20 +44,22 @@ insects$Insect = factor(insects$Insect, levels = c("NonInsect", "Insect"))
 # plotting
 Figure6 <- ggplot(insects, aes(x = DateCollected, y = Density, fill = Insect)) +
   geom_bar(position="fill", stat="identity")+
-  labs(x = "Collection Period", y = "Proportion of Insects/Non-Insects") +
+  labs(x = "Collection Period", y = "Proportion of Insect/Non-Insect Density") +
   scale_fill_manual(values = c("Insect" = "#6A88B4", "NonInsect" = "#CDD6DF"), 
                     name = "Type") +
   facet_wrap(~ Type, scales = "free_x") +
   theme(panel.background = element_rect(fill = "white"),
         panel.border = element_rect(color = "grey", fill = NA),
         axis.line = element_line(color = "grey"),
-        axis.text = element_text(size = 14), # Increase axis text size
-        axis.title = element_text(size = 16), # Increase axis title text size
-        strip.text = element_text(size = 14), # Increase facet label text size
-        legend.title = element_text(size = 14), # Increase legend title text size
+        axis.text = element_text(size = 14), 
+        axis.title = element_text(size = 16), 
+        strip.text = element_text(size = 14), 
+        legend.title = element_text(size = 14), 
         legend.text = element_text(size = 12),
         axis.text.x = element_text(angle = 45, hjust = 1))
 Figure6
+ggsave("Figure6Sickingetal.png", plot = Figure6, dpi = 700, width = 9.5, height = 5, units = "in")
+
 
 ## Analysis for Figure 6
 
@@ -85,6 +87,10 @@ proportion_data<- proportion_data %>%
     TRUE ~ as.character(Date_collected)
   ))%>%
   relocate(Date_collected, .before = 1)
+proportion_data$DateCollected <- factor(
+  proportion_data$DateCollected,
+  levels = c("Feb","Mar","Apr","May","Jun")
+)
 
 # separating into swamp and marsh datasets
 proportion_dataM <- proportion_data %>%
@@ -111,7 +117,6 @@ emmeans(propmodelS, pairwise~DateCollected, type="response")
 
 # comparing the null model (without date as a predictor) to the model with date as a predictor
 anova(nullM, propmodelM, test = "Chisq")
-# The significant p-value (0.007027) indicates that including collection date significantly improves model fit.
 
 # looking at differences in proportion between each pair of months
 emmeans(propmodelM, pairwise~ DateCollected, type="response")

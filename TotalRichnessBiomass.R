@@ -109,7 +109,7 @@ totalbiomasspersite <- totalbiomasspersite %>%
   )) %>%
   relocate(HLength, .before = 1)
 
-# convert DaysInund to numeric during creation
+# converting DaysInund to numeric during creation
 totalbiomasspersite <- totalbiomasspersite %>%
   mutate(DaysInund = case_when(
       Wetland == "W15" ~ 106.0556,
@@ -307,5 +307,6 @@ Figure11Richness
 
 # adding both the plots together to make the complete Figure 11
 library(patchwork)
-Figure11Flux+Figure11Richness
+Figure11<- Figure11Flux+Figure11Richness
+ggsave("Figure11Sickingetal.png", plot = Figure11, dpi = 700, width = 14, height = 5, units = "in")
 

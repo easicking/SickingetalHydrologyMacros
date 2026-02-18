@@ -1,3 +1,4 @@
+### Figures 7-10
 ## Changes in emergence biomass and richness over time, figures 10 and 8
 library(tidyr)
 library(dplyr)
@@ -136,6 +137,8 @@ Figure10 <- ggplot(biomassacross, aes(x = DateCollected, y = Flux, fill = HLengt
         axis.text.x = element_text(angle = 45, hjust = 1),
 )
 Figure10
+ggsave("Figure10Sickingetal.png", plot = Figure10, dpi = 700, width = 12, height = 5, units = "in")
+
 
 ## RICHNESS ACROSS TIME VISUALIZATIONS (Figure 8)
 # reading in richness data
@@ -194,6 +197,8 @@ Figure8 <- ggplot(richnessacross, aes(x = DateCollected, y = Richness, fill = HL
         legend.title = element_text(size = 14), 
         legend.text = element_text(size = 12))
 Figure8
+ggsave("Figure8Sickingetal.png", plot = Figure8, dpi = 700, width = 12, height = 5, units = "in")
+
 
 ### Benthic biomass and richness across time, figures 7 and 9
 library(tidyr)
@@ -249,6 +254,7 @@ Figure9 <- ggplot(biomassacross, aes(x = DateCollected, y = Biomass, fill = Type
         legend.title = element_text(size = 14), # Increase legend title text size
         legend.text = element_text(size = 12))
 Figure9
+ggsave("Figure9Sickingetal.png", plot = Figure9, dpi = 700, width = 10, height = 5, units = "in")
 
 
 ## RICHNESS ACROSS THE HYDROPERIOD
@@ -327,4 +333,5 @@ Figure7 <- ggplot(richnessacross, aes(x = DateCollected, y = richness, fill = Ty
         legend.text = element_text(size = 12),
         axis.text.x = element_text(angle = 45, hjust = 1))
 Figure7
+ggsave("Figure7Sickingetal.png", plot = Figure7, dpi = 700, width = 10, height = 5, units = "in")
 

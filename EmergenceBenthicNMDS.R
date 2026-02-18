@@ -1,4 +1,5 @@
-### Benthic trait-based community composition NMDS
+### Figures 4 and 5
+## Benthic trait-based community composition NMDS
 
 # loading in packages
 library(tidyr)
@@ -157,10 +158,12 @@ Figure4A<- ggplot() +
   labs(x = "NMDS1", 
        y = "NMDS2",
        fill = "Vegetation",
-       shape = "Hydroperiod Length")+
+       shape = "Hydroperiod length")+
   theme_minimal() +
+  theme(text = element_text(size = 14)) +
   theme(legend.position = "right")
 print(Figure4A)
+Figure4A <- Figure4A + labs(tag = "A")
 
 # making Figure 4B
 
@@ -200,7 +203,7 @@ Figure4B <- ggplot() +
   scale_fill_manual(values = c("Short" = "#DBDEE6", 
                                "Intermediate" = "#849dc1",
                                "Long" = "#354C82"), 
-                    name = "Hydroperiod Length") +
+                    name = "Hydroperiod length") +
   # adding the taxa as dots
   geom_point(data = sig_taxa_scores_totalbiomass,
              aes(x = NMDS1, y = NMDS2),
@@ -217,14 +220,17 @@ Figure4B <- ggplot() +
   labs(x = "NMDS1", 
        y = "NMDS2",
        shape = "Vegetation",
-       fill = "Hydroperiod Length") +
+       fill = "Hydroperiod length") +
+  guides(fill  = guide_legend(order = 1), shape = guide_legend(order = 2)) +
   theme_minimal() +
+  theme(text = element_text(size = 14)) +
   theme(legend.position = "right")
 print(Figure4B)
+Figure4B <- Figure4B + labs(tag = "B")
 
 # putting 4A and 4B together
 library(patchwork)
-Figure4A+ Figure4B
+BenthicNMDS<- Figure4A+ Figure4B
 
 ## Analysis for Figure 4A and 4B
 
@@ -387,7 +393,7 @@ Figure4D <- ggplot() +
              aes(x = axis1, y = axis2, fill = as.factor(HLength)), 
              size = 5, shape = 21) +
   scale_fill_manual(values = c("Short" = "#DBDEE6", "Intermediate" = "#849dc1",
-                               "Long" = "#354C82"), name = "Hydroperiod Length")+
+                               "Long" = "#354C82"), name = "Hydroperiod length")+
   # adding the taxa as dots
   geom_point(data = sig_FFG_scores_totalbiomass,
              aes(x = NMDS1, y = NMDS2),
@@ -402,11 +408,14 @@ Figure4D <- ggplot() +
                   max.overlaps = 15)+
   labs(x = "NMDS1", 
        y = "NMDS2",
-       shape = "Vegetation",
-       fill = "Hydroperiod Length") +
+       fill = "Hydroperiod length",
+       shape = "Vegetation") +
+  guides(fill  = guide_legend(order = 1), shape = guide_legend(order = 2)) +
   theme_minimal() +
+  theme(text = element_text(size = 14)) +
   theme(legend.position = "right")
 print(Figure4D)
+Figure4D <- Figure4D + labs(tag = "D")
 
 # making Figure 4C
 
@@ -467,14 +476,21 @@ Figure4C <- ggplot() +
   labs(x = "NMDS1", 
        y = "NMDS2",
        fill = "Vegetation",
-       shape = "Hydroperiod Length")+
+       shape = "Hydroperiod length")+
   theme_minimal() +
+  coord_equal() +
+  theme(text = element_text(size = 14)) +
   theme(legend.position = "right")
 print(Figure4C)
+Figure4C <- Figure4C + labs(tag = "C")
 
 # plotting the plots side by side
 library(patchwork)
-Figure4C + Figure4D
+EmergenceNMDS<- Figure4C + Figure4D
+Figure4 <- BenthicNMDS/EmergenceNMDS 
+Figure4 
+ggsave("Figure4Sickingetal.png", plot = Figure4, dpi = 700, width = 12, height = 9, units = "in")
+
 
 # creating matrix for permanova analysis
 library(dplyr)
@@ -650,8 +666,10 @@ Figure5B <- ggplot() +
        shape = "Hydroperiod Length",
        fill = "Month Collected") +
   theme_minimal() +
+  theme(text = element_text(size = 14)) +
   theme(legend.position = "right")
 print(Figure5B)
+Figure5B <- Figure5B + labs(tag = "B")
 
 # PERMANOVA
 permanova_s <- adonis2(dist_matrix_biomass_s ~ HLength + Date_collected, data = nmds_data_s,
@@ -813,12 +831,16 @@ Figure5A <- ggplot() +
        shape = "Hydroperiod Length",
        fill = "Month Collected") +
   theme_minimal() +
+  theme(text = element_text(size = 14)) +
   theme(legend.position = "right")
 print(Figure5A)
+Figure5A <- Figure5A + labs(tag = "A")
 
 # combining the two plots
 library(patchwork)
-Figure5A + Figure5B
+Figure5<- Figure5A + Figure5B
+ggsave("Figure5Sickingetal.png", plot = Figure5, dpi = 700, width = 14, height = 5, units = "in")
+
 
 # running the permanova:
 permanova_m <-  adonis2(dist_matrix_biomass_m ~ HLength + Date_collected, data = nmds_data_m,
