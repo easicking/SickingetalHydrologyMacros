@@ -5,6 +5,7 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(emmeans)
+library(multcomp)
 
 # reading in the data
 benthicbiomass <- read.csv ("BenthicBiomassTotaled.csv")
@@ -46,7 +47,7 @@ Figure6 <- ggplot(insects, aes(x = DateCollected, y = Density, fill = Insect)) +
   geom_bar(position="fill", stat="identity")+
   labs(x = "Collection Period", y = "Proportion of Insect/Non-Insect Density") +
   scale_fill_manual(values = c("Insect" = "#6A88B4", "NonInsect" = "#CDD6DF"), 
-                    name = "Type") +
+                    name = "Type", labels = c("Insect", "Non-Insect"))+
   facet_wrap(~ Type, scales = "free_x") +
   theme(panel.background = element_rect(fill = "white"),
         panel.border = element_rect(color = "grey", fill = NA),
@@ -55,8 +56,7 @@ Figure6 <- ggplot(insects, aes(x = DateCollected, y = Density, fill = Insect)) +
         axis.title = element_text(size = 16), 
         strip.text = element_text(size = 14), 
         legend.title = element_text(size = 14), 
-        legend.text = element_text(size = 12),
-        axis.text.x = element_text(angle = 45, hjust = 1))
+        legend.text = element_text(size = 12))
 Figure6
 ggsave("Figure6Sickingetal.png", plot = Figure6, dpi = 700, width = 9.5, height = 5, units = "in")
 
@@ -113,17 +113,19 @@ anova(nullS, propmodelS, test = "Chisq")
 # The significant p-value (2.057e-09) indicates that including collection date significantly improves model fit.
 
 # looking at differences in proportion between each pair of months
-emmeans(propmodelS, pairwise~DateCollected, type="response")
+emmeans(propmodelS, ~ DateCollected, type = "response", adjust = "tukey")
+
 
 # comparing the null model (without date as a predictor) to the model with date as a predictor
 anova(nullM, propmodelM, test = "Chisq")
 
 # looking at differences in proportion between each pair of months
-emmeans(propmodelM, pairwise~ DateCollected, type="response")
+emmeans(propmodelM, ~ DateCollected, type = "response", adjust = "tukey")
 
 
 ## looking at everything combined, not separating by marsh and swamp
 # creating null model
+str(proportion_data$DateCollected)
 null <- glm (Density_Proportion ~ 1, family = Gamma (link = "log"), data = proportion_data)
 summary (null)
 # creating model with date collected as a predictor
